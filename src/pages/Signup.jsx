@@ -1,0 +1,68 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import AuthLayout from '../components/AuthLayout';
+import FormField from '../components/FormField';
+import { useAuth } from '../context/AuthContext';
+import { useUI } from '../context/UIContext';
+import { hasErrors, validate } from '../utils/validators';
+
+export default function Signup() {
+  const { signup } = useAuth();
+  const { flash } = useUI();
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setFormError('');
+
+    const found = validate(form, ['name', 'email', 'password']);
+    setErrors(found);
+    if (hasErrors(found)) return;
+
+    setBusy(true);
+    const result = await signup(form);
+    setBusy(false);
+
+    if (result.error) {
+      setFormError(result.error);
+      return;
+    }
+    flash(`Welcome, ${result.user.name.split(' ')[0]}!`);
+    navigate('/', { replace: true });
+  };
+
+  return (
+    <AuthLayout
+      title="Create your account"
+      subtitle="Register to download titles and keep your lists."
+      onSubmit={handleSubmit}
+      formError={formError}
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link to="/login" className="accent font-semibold hover:underline">Log in</Link>
+        </>
+      }
+    >
+      <FormField label="Name" name="name" autoComplete="name" value={form.name} onChange={handleChange} error={errors.name} />
+      <FormField label="Email" name="email" type="email" autoComplete="email" value={form.email} onChange={handleChange} error={errors.email} />
+      <FormField label="Password" name="password" type="password" autoComplete="new-password" value={form.password} onChange={handleChange} error={errors.password} />
+
+      <button disabled={busy} className="btn-primary mt-6 w-full">
+        {busy && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />}
+        Sign up
+      </button>
+    </AuthLayout>
+  );
+}
